@@ -1,6 +1,16 @@
 import '../styles/global.css';
 
-export default function Layout({ titulo, subtitulo, onVoltar, children }) {
+export default function Layout({ titulo, subtitulo, onVoltar, children, usuarioLogado }) {
+  const nomeExibicao = usuarioLogado?.nome || 'Usuário';
+
+  const obterIniciaris = (nome) => {
+    if (!nome) return 'US';
+
+    const partes = nome.trim().split(' ');
+    if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+    return (partes[0][0] + partes[partes.length -1][0]).toUpperCase();
+  };
+
   return (
     <div>
       <nav className="topnav">
@@ -9,8 +19,8 @@ export default function Layout({ titulo, subtitulo, onVoltar, children }) {
           Portal do Supervisor
         </div>
         <div className="topnav-right">
-          <span className="topnav-user">Matheus Marques</span>
-          <div className="topnav-avatar">MM</div>
+          <span className="topnav-user">{nomeExibicao}</span>
+          <div className="topnav-avatar">{obterIniciaris(nomeExibicao)}</div>
         </div>
       </nav>
 

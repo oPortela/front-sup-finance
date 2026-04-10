@@ -80,12 +80,18 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
     
     try {
       const token = localStorage.getItem('token_supervisor');
-      const supervisorStr = localStorage.getItem('dados_supervisor');
-      const supervisorLogado = supervisorStr ? JSON.parse(supervisorStr) : { id: 300 };
+      const supervisorStr = localStorage.getItem('usuario_logado');
+      const supObj = JSON.parse(supervisorStr);
+      const codSupervisor = supObj.codsupervisor;
+      const supervisorLogado = supervisorStr ? JSON.parse(supervisorStr) : { id: 7000 };
+
+      if (!supervisorLogado) {
+        throw new Error("Sessão inválida. Faça login novamente.");
+      }
 
       // Build the dynamic URL with query parameters expected by your FastAPI router
       const queryParams = new URLSearchParams({
-        codsupervisor: supervisorLogado.id,
+        codsupervisor: codSupervisor,
         dtinicio: formatarDataParaOracle(filtroDataDe),  
         dtfim: formatarDataParaOracle(filtroDataAte)
       });

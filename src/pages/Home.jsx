@@ -1,5 +1,5 @@
 import '../styles/global.css';
-import teste from '../assets/logo-1.png';
+import sigweb from '../assets/logo-1.png';
 
 const modulos = [
   {
@@ -28,7 +28,7 @@ const modulos = [
   },
   {
     id: 'sigweb',
-    icone: teste,//'📊',
+    icone: sigweb,
     tipoIcone: 'imagem',
     titulo: 'SigWeb',
     descricao: 'Acessar o sistema SigWeb.',
@@ -36,7 +36,18 @@ const modulos = [
   }
 ];
 
-export default function Home({ onNavegar }) {
+export default function Home({ onNavegar, usuarioLogado }) {
+  const nomeExibicao = usuarioLogado?.nome || 'Usuário';
+  const codSupervisor = usuarioLogado.codsupervisor || 0;
+
+  const obterIniciaris = (nome) => {
+    if (!nome) return 'US';
+
+    const partes = nome.trim().split(' ');
+    if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+    return (partes[0][0] + partes[partes.length -1][0]).toUpperCase();
+  };
+
   const handleCliquemodulo = (modulo) => {
     if (modulo.url) {
       window.open(modulo.url, '_blank', 'noopener, noreferrer');
@@ -53,14 +64,15 @@ export default function Home({ onNavegar }) {
           Portal do Supervisor
         </div>
         <div className="topnav-right">
-          <span className="topnav-user">Matheus Marques</span>
-          <div className="topnav-avatar">MM</div>
+          <span className="topnav-user">{nomeExibicao}</span>
+          <span className="topnav-user">{codSupervisor}</span>
+          <div className="topnav-avatar">{obterIniciaris(nomeExibicao)}</div>
         </div>
       </nav>
 
       <div className="page-wrapper">
         <div className="home-hero">
-          <h1 className="home-hero-title">Bem-vindo ao Portal 👋</h1>
+          <h1 className="home-hero-title">Bem-vindo ao SigFácil</h1>
           <p className="home-hero-sub">Selecione um módulo abaixo para iniciar uma solicitação.</p>
         </div>
 

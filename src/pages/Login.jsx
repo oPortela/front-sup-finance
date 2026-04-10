@@ -24,6 +24,7 @@ export default function Login({ onNavegar, onLoginSucesso }) {
             // Salva token e dados do usuário no localStorage
             localStorage.setItem('token_supervisor', json.access_token);
             localStorage.setItem('usuario_logado', JSON.stringify(json.usuario));
+            localStorage.setItem('codsupervisor', json.usuario.codsupervisor);
 
             // Redireciona conforme o nível
             if (json.usuario.nivel === 'A') {

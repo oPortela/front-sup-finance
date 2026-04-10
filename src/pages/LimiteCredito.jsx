@@ -23,7 +23,7 @@ const COLUNAS_LIMITE = [
   { key: 'obs', label: 'Observação'},
 ];
 
-export default function LimiteCredito({ onVoltar }) {
+export default function LimiteCredito({ onVoltar, usuarioLogado }) {
   const [modo, setModo] = useState(MODOS.CONSULTA);
   const [etapa, setEtapa] = useState(ETAPAS.RCA);
   const [rcaSelecionado, setRcaSelecionado] = useState(null);
@@ -61,7 +61,7 @@ export default function LimiteCredito({ onVoltar }) {
         const token = TOKEN_SUPERVISOR; 
         
         // Ajuste esta rota caso o endereço no seu FastAPI seja diferente
-        const url_api = `${URL_API}/limite/${clienteSelecionado.codcli}`;
+        const url_api = `${URL_API}/limite/consultar/${clienteSelecionado.codcli}`;
         
         const resposta = await fetch(url_api, {
           method: 'GET',
@@ -163,6 +163,7 @@ export default function LimiteCredito({ onVoltar }) {
       titulo="💳 Limite de Crédito"
       subtitulo={modo === MODOS.CONSULTA ? 'Consulta e gestão de solicitações.' : 'Nova solicitação de limite.'}
       onVoltar={onVoltar}
+      usuarioLogado={usuarioLogado}
     >
       <Feedback
         tipo={feedback.tipo}
