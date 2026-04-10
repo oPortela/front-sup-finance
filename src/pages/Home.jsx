@@ -1,5 +1,5 @@
 import '../styles/global.css';
-import teste from '../assets/hero.png';
+import teste from '../assets/logo-1.png';
 
 const modulos = [
   {
