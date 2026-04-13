@@ -45,7 +45,7 @@ export default function Login({ onNavegar, onLoginSucesso }) {
         <div className="tela-login-fundo">
             <div className="cartao-login">
                 <div className="login-logo">🏢</div>
-                <h2>Portal do Supervisor</h2>
+                <h2>Bem-vindo ao SigFácil</h2>
                 <p className="subtitulo-login">Acesso ao Sistema Financeiro</p>
 
                 <form onSubmit={handleSubmit} className="form-login">

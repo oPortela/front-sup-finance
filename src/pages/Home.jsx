@@ -19,12 +19,14 @@ const modulos = [
     icone: '🔄',
     titulo: 'Recadastro de Cliente',
     descricao: 'Atualizar dados cadastrais do cliente no sistema.',
+    emDesenvolvimento: true,
   },
   {
     id: 'negociacao',
     icone: '🤝',
     titulo: 'Solicitação de Negociação',
     descricao: 'Abrir negociação em itens e descontos.',
+    emDesenvolvimento: true,
   },
   {
     id: 'sigweb',
@@ -82,10 +84,24 @@ export default function Home({ onNavegar, usuarioLogado }) {
           {modulos.map((m) => (
             <button
               key={m.id}
-              className="module-card"
+              // Se estiver em desenvolvimento, adiciona uma classe extra para ficar "apagadinho"
+              className={`module-card ${m.emDesenvolvimento ? 'module-disabled' : ''}`}
               data-mod={m.id}
-              onClick={() => handleCliquemodulo(m)}
+              onClick={() => {
+                // Trava o clique e avisa o usuário
+                if (m.emDesenvolvimento) {
+                  alert('🚧 Este módulo estará disponível em breve!');
+                  return;
+                }
+                handleCliquemodulo(m);
+              }}
             >
+              {/* === NOVA ETIQUETA AQUI === */}
+              {m.emDesenvolvimento && (
+                <div className="badge-em-breve">Em breve</div>
+              )}
+              {/* ========================== */}
+
               <div className="module-card-icon-wrap">
                 {m.tipoIcone === 'imagem' ? (
                   <img 
@@ -100,7 +116,11 @@ export default function Home({ onNavegar, usuarioLogado }) {
               </div>
               <h2 className="module-card-title">{m.titulo}</h2>
               <p className="module-card-desc">{m.descricao}</p>
-              <span className="module-card-arrow">→</span>
+              
+              {/* Se não estiver em desenvolvimento, mostra a setinha, senão mostra um cadeado */}
+              <span className="module-card-arrow">
+                {m.emDesenvolvimento ? '🔒' : '→'}
+              </span>
             </button>
           ))}
         </div>
