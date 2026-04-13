@@ -60,7 +60,7 @@ function ModalEdicao({ solicitacao, endpointBase, onFechar, onSucesso }) {
     setErro('');
     try {
       const token = localStorage.getItem('token_supervisor');
-      const resp = await fetch(`${URL_API}${endpointBase}/${solicitacao.id_solicitacao}`, {
+      const resp = await fetch(`${URL_API}/limite/atualizar/${solicitacao.id_solicitacao}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
