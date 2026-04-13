@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 
 const URL_API = import.meta.env.VITE_URL_API;
 
-// ... (STATUS_CONFIG, StatusBadge, formatarData, formatarMoeda remain exactly the same) ...
-
 const STATUS_CONFIG = {
   pendente:  { label: 'Pendente',  cor: '#d97706', bg: '#fffbeb', border: '#fde68a' },
   aprovado:  { label: 'Aprovado',  cor: '#16a34a', bg: '#dcfce7', border: '#86efac' },
@@ -11,12 +9,10 @@ const STATUS_CONFIG = {
   cancelado: { label: 'Cancelado', cor: '#64748b', bg: '#f1f5f9', border: '#cbd5e1' },
 };
 
-function StatusBadge({ status }) {
-  // Map backend status codes (P, A, R) to your config keys
-  const statusKeyMap = { 'P': 'pendente', 'A': 'aprovado', 'R': 'reprovado', 'C': 'cancelado' };
-  const mappedStatus = statusKeyMap[status] || status; 
-  const cfg = STATUS_CONFIG[mappedStatus] || STATUS_CONFIG.pendente;
+const STATUS_KEY_MAP = { P: 'pendente', A: 'aprovado', R: 'reprovado', C: 'cancelado' };
 
+function StatusBadge({ status }) {
+  const cfg = STATUS_CONFIG[STATUS_KEY_MAP[status]] || STATUS_CONFIG.pendente;
   return (
     <span style={{
       background: cfg.bg, color: cfg.cor, border: `1px solid ${cfg.border}`,
@@ -28,19 +24,16 @@ function StatusBadge({ status }) {
   );
 }
 
-// Função que converte "2026-04-09" para "09-apr-2026"
 function formatarDataParaOracle(dataIso) {
   if (!dataIso) return '';
-  const meses = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const meses = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
   const [ano, mes, dia] = dataIso.split('-');
-  // Pega o número do mês (ex: '04' -> 4), subtrai 1 para o índice do array, e monta a string
   return `${dia}-${meses[parseInt(mes, 10) - 1]}-${ano}`;
 }
 
 function formatarData(dataStr) {
   if (!dataStr) return '—';
-  // Handle 'YYYY-MM-DD HH:MM:SS' format from backend properly
-  const d = new Date(dataStr.replace(' ', 'T')); 
+  const d = new Date(dataStr.replace(' ', 'T'));
   return d.toLocaleDateString('pt-BR');
 }
 
@@ -49,18 +42,170 @@ function formatarMoeda(valor) {
   return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// ── Modal de Edição ──────────────────────────────────────────────
+function ModalEdicao({ solicitacao, endpointBase, onFechar, onSucesso }) {
+  const [form, setForm] = useState({
+    limite_sol: solicitacao.limite_sol ?? '',
+    motivo: solicitacao.motivo ?? '',
+    obs: solicitacao.obs ?? '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErro('');
+    try {
+      const token = localStorage.getItem('token_supervisor');
+      const resp = await fetch(`${URL_API}${endpointBase}/${solicitacao.id_solicitacao}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          limite_sol: parseFloat(form.limite_sol),
+          motivo: form.motivo,
+          obs: form.obs,
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao atualizar solicitação.');
+      }
+      onSucesso();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+        <div className="modal-header">
+          <span className="modal-title">✏️ Editar Solicitação</span>
+          <button className="modal-close" onClick={onFechar}>✕</button>
+        </div>
+        <form className="form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Valor Solicitado (R$)</label>
+            <input
+              name="limite_sol"
+              type="number"
+              min="0"
+              step="0.01"
+              className="input"
+              value={form.limite_sol}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Motivo</label>
+            <select name="motivo" className="input" value={form.motivo} onChange={handleChange} required>
+              <option value="">Selecione...</option>
+              <option value="historico_pagamento">Bom histórico de pagamento</option>
+              <option value="aumento_demanda">Aumento de demanda</option>
+              <option value="novo_contrato">Novo contrato firmado</option>
+              <option value="pedido_grande">Valor de pedido maior que o limite</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Observação</label>
+            <textarea
+              name="obs"
+              className="input textarea"
+              rows={3}
+              value={form.obs}
+              onChange={handleChange}
+            />
+          </div>
+          {erro && <p className="error-msg">⚠ {erro}</p>}
+          <div className="form-actions">
+            <button type="button" className="btn btn-outline" onClick={onFechar}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal de Confirmação de Cancelamento ─────────────────────────
+function ModalCancelamento({ solicitacao, endpointBase, onFechar, onSucesso }) {
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const handleCancelar = async () => {
+    setLoading(true);
+    setErro('');
+    try {
+      const token = localStorage.getItem('token_supervisor');
+      const resp = await fetch(`${URL_API}/limite/cancelar/${solicitacao.id_solicitacao}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 'C' }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao cancelar solicitação.');
+      }
+      onSucesso();
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+        <div className="modal-header">
+          <span className="modal-title">🗑️ Excluir Solicitação</span>
+          <button className="modal-close" onClick={onFechar}>✕</button>
+        </div>
+        <div style={{ padding: '20px 24px 24px' }}>
+          <p style={{ margin: '0 0 8px' }}>
+            Tem certeza que deseja excluir a solicitação do cliente <strong>{solicitacao.cliente}</strong>?
+          </p>
+          <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#64748b' }}>
+            O status será alterado para Cancelado. Esta ação não pode ser desfeita.
+          </p>
+          {erro && <p className="error-msg">⚠ {erro}</p>}
+          <div className="form-actions">
+            <button className="btn btn-outline" onClick={onFechar}>Voltar</button>
+            <button
+              className="btn"
+              style={{ background: '#dc2626', color: '#fff', border: 'none' }}
+              onClick={handleCancelar}
+              disabled={loading}
+            >
+              {loading ? 'Excluindo...' : 'Confirmar Exclusão'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Componente Principal ─────────────────────────────────────────
 export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, onNovaSolicitacao }) {
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
-  
-  // MOCK RCAS for the filter dropdown
+
   const [rcasDisponiveis, setRcasDisponiveis] = useState([
-     { codusur: '7045', nome: 'Matheus' },
-     { codusur: '7046', nome: 'Marcos' }
+    { codusur: '7045', nome: 'Matheus' },
+    { codusur: '7046', nome: 'Marcos' },
   ]);
 
-  // Data defaults: Last 30 days
   const hoje = new Date();
   const trintaDiasAtras = new Date();
   trintaDiasAtras.setDate(hoje.getDate() - 30);
@@ -71,46 +216,33 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
   const [filtroDataAte, setFiltroDataAte] = useState(hoje.toISOString().split('T')[0]);
   const [filtroBusca, setFiltroBusca] = useState('');
 
-  // Use useCallback so we can call this from useEffect and the 'Buscar' button
+  // Modais
+  const [modalEdicao, setModalEdicao] = useState(null);       // solicitação sendo editada
+  const [modalCancelamento, setModalCancelamento] = useState(null); // solicitação sendo cancelada
+
   const buscarDadosAPI = useCallback(async () => {
     if (!filtroDataDe || !filtroDataAte) return;
-
     setCarregando(true);
     setErro(null);
-    
     try {
       const token = localStorage.getItem('token_supervisor');
       const supervisorStr = localStorage.getItem('usuario_logado');
       const supObj = JSON.parse(supervisorStr);
       const codSupervisor = supObj.codsupervisor;
-      const supervisorLogado = supervisorStr ? JSON.parse(supervisorStr) : { id: 7000 };
 
-      if (!supervisorLogado) {
-        throw new Error("Sessão inválida. Faça login novamente.");
-      }
-
-      // Build the dynamic URL with query parameters expected by your FastAPI router
       const queryParams = new URLSearchParams({
         codsupervisor: codSupervisor,
-        dtinicio: formatarDataParaOracle(filtroDataDe),  
-        dtfim: formatarDataParaOracle(filtroDataAte)
+        dtinicio: formatarDataParaOracle(filtroDataDe),
+        dtfim: formatarDataParaOracle(filtroDataAte),
       });
 
-      const urlFinal = `${URL_API}${endpointBase}?${queryParams.toString()}`;
-
-      const resposta = await fetch(urlFinal, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      const resp = await fetch(`${URL_API}${endpointBase}?${queryParams}`, {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       });
 
-      if (!resposta.ok) throw new Error('Falha ao carregar solicitações.');
-      const json = await resposta.json();
-      
+      if (!resp.ok) throw new Error('Falha ao carregar solicitações.');
+      const json = await resp.json();
       setSolicitacoes(json.data || []);
-      
     } catch (err) {
       setErro(err.message);
     } finally {
@@ -118,57 +250,68 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
     }
   }, [endpointBase, filtroDataDe, filtroDataAte]);
 
-  // Fetch data on initial mount and when dates change
-  useEffect(() => {
-    buscarDadosAPI();
-  }, [buscarDadosAPI]);
+  useEffect(() => { buscarDadosAPI(); }, [buscarDadosAPI]);
 
-  // Frontend filtering for text, RCA, and Status (since the API returns all statuses for the period)
   const filtradas = solicitacoes.filter((s) => {
     if (filtroStatus && s.status !== filtroStatus) return false;
     if (filtroRca && String(s.codusur) !== filtroRca) return false;
-
     if (filtroBusca) {
       const t = filtroBusca.toLowerCase();
-      const nomeCliente = (s.cliente || '').toLowerCase();
-      const codcli = String(s.codcli || '');
-      if (!nomeCliente.includes(t) && !codcli.includes(t)) return false;
+      if (!(s.cliente || '').toLowerCase().includes(t) && !String(s.codcli || '').includes(t)) return false;
     }
     return true;
   });
 
-  const limparFiltros = () => {
-    setFiltroStatus('');
-    setFiltroRca('');
-    setFiltroBusca('');
-    // We intentionally don't clear dates, otherwise the API query breaks
+  const limparFiltros = () => { setFiltroStatus(''); setFiltroRca(''); setFiltroBusca(''); };
+  const temFiltroAtivo = filtroStatus || filtroRca || filtroBusca;
+
+  // Após sucesso nos modais, fecha e recarrega
+  const handleSucesso = () => {
+    setModalEdicao(null);
+    setModalCancelamento(null);
+    buscarDadosAPI();
   };
 
-  const temFiltroAtivo = filtroStatus || filtroRca || filtroBusca;
+  // Só mostra editar/cancelar para solicitações pendentes
+  const podeEditar = (s) => s.status === 'P';
 
   return (
     <div>
+      {/* Modais */}
+      {modalEdicao && (
+        <ModalEdicao
+          solicitacao={modalEdicao}
+          endpointBase={endpointBase}
+          onFechar={() => setModalEdicao(null)}
+          onSucesso={handleSucesso}
+        />
+      )}
+      {modalCancelamento && (
+        <ModalCancelamento
+          solicitacao={modalCancelamento}
+          endpointBase={endpointBase}
+          onFechar={() => setModalCancelamento(null)}
+          onSucesso={handleSucesso}
+        />
+      )}
+
       <div className="consulta-topbar">
         <div className="consulta-topbar-info">
-           <h2 style={{margin: 0, fontSize: '1.2rem'}}>{titulo}</h2>
-           <span className="consulta-total" style={{marginLeft: '10px', fontSize: '0.9rem', color: '#666'}}>
-             {carregando ? 'Buscando...' : `${filtradas.length} encontrada(s)`}
-           </span>
+          <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{titulo}</h2>
+          <span style={{ marginLeft: 10, fontSize: '0.9rem', color: '#666' }}>
+            {carregando ? 'Buscando...' : `${filtradas.length} encontrada(s)`}
+          </span>
         </div>
-        <button className="btn btn-primary" onClick={onNovaSolicitacao}>
-          + Nova Solicitação
-        </button>
+        <button className="btn btn-primary" onClick={onNovaSolicitacao}>+ Nova Solicitação</button>
       </div>
 
       <div className="consulta-filtros card">
         <div className="consulta-filtros-grid">
-          
           <div className="filtro-datas">
-            <input type="date" className="input" title="Data de" value={filtroDataDe} onChange={(e) => setFiltroDataDe(e.target.value)} />
+            <input type="date" className="input" value={filtroDataDe} onChange={(e) => setFiltroDataDe(e.target.value)} />
             <span className="filtro-datas-sep">até</span>
-            <input type="date" className="input" title="Data até" value={filtroDataAte} onChange={(e) => setFiltroDataAte(e.target.value)} />
-            {/* Botão para recarregar da API com as novas datas */}
-            <button className='btn btn-outline btn-sm' onClick={buscarDadosAPI}>Atualizar Banco</button>
+            <input type="date" className="input" value={filtroDataAte} onChange={(e) => setFiltroDataAte(e.target.value)} />
+            <button className="btn btn-outline btn-sm" onClick={buscarDadosAPI}>Atualizar Banco</button>
           </div>
 
           <div className="search-wrap">
@@ -181,6 +324,7 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
             <option value="P">Pendente</option>
             <option value="A">Aprovado</option>
             <option value="R">Reprovado</option>
+            <option value="C">Cancelado</option>
           </select>
 
           <select className="input" value={filtroRca} onChange={(e) => setFiltroRca(e.target.value)}>
@@ -191,7 +335,7 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
           </select>
 
           {temFiltroAtivo && (
-            <button className="btn btn-outline btn-sm" onClick={limparFiltros}>✕ Limpar textos</button>
+            <button className="btn btn-outline btn-sm" onClick={limparFiltros}>✕ Limpar</button>
           )}
         </div>
       </div>
@@ -199,7 +343,6 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
       <div className="card consulta-card">
         {carregando && <p className="loading-msg">Carregando solicitações do ERP...</p>}
         {erro && <p className="error-msg">⚠ {erro}</p>}
-
         {!carregando && !erro && filtradas.length === 0 && (
           <p className="empty-msg">Nenhuma solicitação encontrada.</p>
         )}
@@ -209,25 +352,46 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
             <table className="consulta-table">
               <thead>
                 <tr>
-                  {colunas.map((col) => (
-                    <th key={col.key}>{col.label}</th>
-                  ))}
+                  {colunas.map((col) => <th key={col.key}>{col.label}</th>)}
                   <th>Status</th>
                   <th>Data</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filtradas.map((s, i) => (
                   <tr key={s.id_solicitacao || i}>
                     {colunas.map((col) => (
-                      <td key={col.key}>
-                        {col.render ? col.render(s) : (s[col.key] ?? '—')}
-                      </td>
+                      <td key={col.key}>{col.render ? col.render(s) : (s[col.key] ?? '—')}</td>
                     ))}
-                    {/* Assuming your backend sends "P", "A", "R" for status */}
-                    <td><StatusBadge status={s.status} /></td> 
-                    {/* Use the specific data field from your backend dict */}
+                    <td><StatusBadge status={s.status} /></td>
                     <td className="td-data">{formatarData(s.data)}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          title="Editar solicitação"
+                          disabled={!podeEditar(s)}
+                          style={!podeEditar(s) ? { opacity: 0.35, cursor: 'not-allowed' } : {}}
+                          onClick={() => podeEditar(s) && setModalEdicao(s)}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className="btn btn-sm"
+                          title="Excluir solicitação"
+                          disabled={!podeEditar(s)}
+                          style={
+                            podeEditar(s)
+                              ? { background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }
+                              : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', cursor: 'not-allowed', opacity: 0.5 }
+                          }
+                          onClick={() => podeEditar(s) && setModalCancelamento(s)}
+                        >
+                          🗑️ Excluir
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -238,4 +402,5 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
     </div>
   );
 }
+
 export { formatarMoeda, StatusBadge, formatarData };

@@ -81,10 +81,10 @@ body {
 
 /* ===== PAGE WRAPPER ===== */
 .page-wrapper {
-  max-width: 980px;
+  max-width: 1280px;
   margin: 0 auto;
   width: 100%;
-  padding: 28px 20px;
+  padding: 28px 24px;
 }
 
 /* ===== PAGE HEADER ===== */
@@ -619,7 +619,7 @@ select.input { cursor: pointer; }
 
 .consulta-filtros-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: 1.5fr 1fr 160px 160px auto;
   gap: 12px;
   align-items: end;
 }
