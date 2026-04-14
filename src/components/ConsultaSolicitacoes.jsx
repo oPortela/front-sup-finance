@@ -207,13 +207,13 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
   ]);
 
   const hoje = new Date();
-  const trintaDiasAtras = new Date();
-  trintaDiasAtras.setDate(hoje.getDate() - 30);
+  const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
 
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroRca, setFiltroRca] = useState('');
-  const [filtroDataDe, setFiltroDataDe] = useState(trintaDiasAtras.toISOString().split('T')[0]);
-  const [filtroDataAte, setFiltroDataAte] = useState(hoje.toISOString().split('T')[0]);
+  const [filtroDataDe, setFiltroDataDe] = useState(primeiroDiaMes.toISOString().split('T')[0]);
+  const [filtroDataAte, setFiltroDataAte] = useState(ultimoDiaMes.toISOString().split('T')[0]);
   const [filtroBusca, setFiltroBusca] = useState('');
 
   // Modais
