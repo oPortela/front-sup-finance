@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RcaSelector from '../components/RcaSelector';
 import ClienteSelector from '../components/ClienteSelector';
@@ -6,6 +6,7 @@ import Feedback from '../components/Feedback';
 import Stepper from '../components/Stepper';
 import ConsultaSolicitacoes from '../components/ConsultaSolicitacoes';
 import { alterarPlanoPagamento } from '../services/api';
+const URL_API = import.meta.env.VITE_URL_API;
 
 const MODOS = { CONSULTA: 'consulta', NOVA: 'nova' };
 const ETAPAS = { RCA: 'rca', CLIENTE: 'cliente', FORMULARIO: 'formulario' };
@@ -33,11 +34,48 @@ export default function PlanoPagamento({ onVoltar }) {
   const [etapa, setEtapa] = useState(ETAPAS.RCA);
   const [rcaSelecionado, setRcaSelecionado] = useState(null);
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
+  const [planosPagamento, setPlanosPagamento] = useState([]);
+  const [carregandoPlanos, setCarregandoPlanos] = useState(false);
+  const [planoAtual, setPlanoAtual] = useState([]);
+  const [carregandoPlanoAtual, setCarregandoPlanoAtual] = useState(false);
   const [form, setForm] = useState(ESTADO_INICIAL);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState({ tipo: '', mensagem: '' });
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  useEffect(() => {
+    const buscarPlanos = async () => {
+      setCarregandoPlanos(true);
+      try {
+        const token = localStorage.getItem('token_supervisor');
+        const url = `${URL_API}/plano/lista`;
+
+        const resposta = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!resposta.ok) throw new Error('Falha ao carregar planos de pagamento');
+
+        const json = await resposta.json();
+
+        setPlanosPagamento(json.data || []);
+
+      } catch (err) {
+        console.error("Erro ao buscar planos:", err);
+      } finally {
+        setCarregandoPlanos(false);
+      }
+    };
+
+    buscarPlanos();
+  }, []);
+
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,7 +96,7 @@ export default function PlanoPagamento({ onVoltar }) {
     } catch (err) {
       setFeedback({ tipo: 'erro', mensagem: err.message });
     } finally {
-      setLoading(false);
+      setLoading(false); 
     }
   };
 
@@ -133,17 +171,30 @@ export default function PlanoPagamento({ onVoltar }) {
                       placeholder="Ex: 30/60/90"
                       value={form.planoAtual}
                       onChange={handleChange}
+                      readOnly
                       required
                     />
                   </div>
                   <div className="form-group">
                     <label htmlFor="planoSolicitado">Plano Solicitado</label>
-                    <select name="planoSolicitado" id="planoSolicitado" className="input" value={form.planoSolicitado} onChange={handleChange} required>
-                      <option value="">Selecione...</option>
-                      <option value="7">7 dias</option>
-                      <option value="30">30 dias</option>
-                      <option value="60">60 dias</option>
-                      <option value="90">90 dias</option>
+                    <select 
+                      name="planoSolicitado" 
+                      id="planoSolicitado"
+                      className='input'
+                      value={form.planoSolicitado}
+                      onChange={handleChange}
+                      required
+                      disabled={carregandoPlanos}
+                    >
+                      <option value="">
+                        {carregandoPlanos ? 'Carregando planos...' : 'Selecione um plano...'}
+                      </option>
+
+                      {planosPagamento.map((plano) => (
+                        <option key={plano.codplpag} value={plano.codplpag}>
+                          {plano.codplpag} - {plano.descricao}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -160,6 +211,7 @@ export default function PlanoPagamento({ onVoltar }) {
                       placeholder="Ex: 30"
                       value={form.prazoAtual}
                       onChange={handleChange}
+                      readOnly
                       required
                     />
                   </div>
@@ -174,6 +226,7 @@ export default function PlanoPagamento({ onVoltar }) {
                       placeholder="Ex: 45"
                       value={form.prazoSolicitado}
                       onChange={handleChange}
+                      readOnly
                       required
                     />
                   </div>
