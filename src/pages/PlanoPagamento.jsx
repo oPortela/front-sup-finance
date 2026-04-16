@@ -44,6 +44,20 @@ export default function PlanoPagamento({ onVoltar }) {
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
+  const handlePlanoChange = (e) => {
+    const codPlano = e.target.value;
+
+    const planoInfo = planosPagamento.find(
+      (p) => String(p.codplpag) === String(codPlano)
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      planoSolicitado: codPlano,
+      prazoSolicitado: planoInfo ? planoInfo.numdias : ''
+    }));
+  };
+
   useEffect(() => {
     const buscarPlanos = async () => {
       setCarregandoPlanos(true);
@@ -75,24 +89,93 @@ export default function PlanoPagamento({ onVoltar }) {
     buscarPlanos();
   }, []);
 
-  
+  useEffect(() => {
+    const buscarPlanoAtual = async () => {
+      setCarregandoPlanoAtual(true);
+      try {
+        const token = localStorage.getItem('token_supervisor');
+        const url = `${URL_API}/plano/atual/${clienteSelecionado.codcli}`;
+
+        const resposta = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!resposta.ok) throw new Error('Falha ao carregar plano de pagamento');
+
+        const json = await resposta.json();
+
+        setForm((prev) => ({
+          ...prev,
+          planoAtual: `${json.codplpag} - ${json.plano}`,
+          prazoAtual: json.numdias || 0
+        }));
+
+      } catch (err) {
+        console.error(err)
+        setFeedback({ tipo: 'erro', mensagem: err.message});
+      } finally {
+        setCarregandoPlanoAtual(false);
+      }
+    };
+
+    if (etapa === ETAPAS.FORMULARIO && clienteSelecionado?.codcli){
+      buscarPlanoAtual();
+    }
+  }, [etapa, clienteSelecionado]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setFeedback({ tipo: '', mensagem: '' });
     try {
-      await alterarPlanoPagamento({
-        codusur: rcaSelecionado.codusur,
-        codcli: clienteSelecionado.codcli,
-        ...form,
+      const token = localStorage.getItem('token_supervisor');
+
+      const supervisorStr = localStorage.getItem('usuario_logado');
+      const supervisorLogado = supervisorStr ? JSON.parse(supervisorStr) : null;
+      const codSupervisorEnvio = supervisorLogado ? (supervisorLogado.codsupervisor || supervisorLogado.id) : 7000;
+
+      const payload = {
+        codcli: parseInt(clienteSelecionado.codcli, 10),
+        codsupervisor: parseInt(codSupervisorEnvio, 10),
+        codusur: parseInt(rcaSelecionado.codusur, 10),
+        plano_sol: parseInt(form.planoSolicitado, 10),
+        motivo: form.justificativa,
+        obs: form.observacao || ""
+      };
+
+      console.log("Enviando payload JSON:", payload);
+
+      const url = `${URL_API}/plano/plano-solicitar`;
+
+      const resposta = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
       });
-      setFeedback({ tipo: 'sucesso', mensagem: 'Alteração de plano enviada com sucesso!' });
+
+      if (!resposta.ok) {
+        const erroData = await resposta.json();
+        throw new Error(erroData.detail || 'Falha ao enviar a solicitação de alteração de plano de pagamento.');
+      }
+
+      setFeedback({ 
+        tipo: 'sucesso', 
+        mensagem: 'Alteração de plano de pagamento enviada com sucesso!' 
+      });
+
       setForm(ESTADO_INICIAL);
       setEtapa(ETAPAS.RCA);
       setRcaSelecionado(null);
       setClienteSelecionado(null);
       setModo(MODOS.CONSULTA);
+
     } catch (err) {
       setFeedback({ tipo: 'erro', mensagem: err.message });
     } finally {
@@ -170,7 +253,6 @@ export default function PlanoPagamento({ onVoltar }) {
                       className="input"
                       placeholder="Ex: 30/60/90"
                       value={form.planoAtual}
-                      onChange={handleChange}
                       readOnly
                       required
                     />
@@ -182,7 +264,7 @@ export default function PlanoPagamento({ onVoltar }) {
                       id="planoSolicitado"
                       className='input'
                       value={form.planoSolicitado}
-                      onChange={handleChange}
+                      onChange={handlePlanoChange}
                       required
                       disabled={carregandoPlanos}
                     >
