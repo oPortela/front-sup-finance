@@ -7,3 +7,5 @@
 cd portal-supervisores
 npm install
 npm run dev
+
+npm run dev -- --host

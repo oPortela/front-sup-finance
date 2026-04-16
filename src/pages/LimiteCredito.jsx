@@ -33,6 +33,7 @@ export default function LimiteCredito({ onVoltar, usuarioLogado }) {
   const [buscandoLimite, setBuscandoLimite] = useState(false); 
   const [idEditando, setIdEditando] = useState(null);
   const [feedback, setFeedback] = useState({ tipo: '', mensagem: '' });
+  const [arquivos, setArquivos] = useState(false);
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -106,46 +107,46 @@ export default function LimiteCredito({ onVoltar, usuarioLogado }) {
     try {
       const token = TOKEN_SUPERVISOR;
 
-      const supervisorStr = 300;//localStorage.getItem('dados_supervisor');
-      if (!supervisorStr) {
-        throw new Error('Sessão expirada ou usuário não encontrado. Faça login novamente.');
-      }
+      const supervisorStr = localStorage.getItem('usuario_logado');
+      const supervisorLogado = supervisorStr ? JSON.parse(supervisorStr) : null;
+      const codsupervisorEnvio = supervisorLogado ? (supervisorLogado.codsupervisor || supervisorLogado.id) : 7000;
 
-      const supervisorLogado = JSON.parse(supervisorStr);
+      const formData = new FormData();
+      formData.append('codcli', clienteSelecionado.codcli);
+      formData.append('codsupervisor', codsupervisorEnvio);
+      formData.append('codusur', rcaSelecionado.codusur);
+      formData.append('limite_sol', form.limiteSolicitado);
+      formData.append('motivo', form.motivo);
+      formData.append('obs', form.observacao || "");
 
-      const payload = {
-        codcli: parseInt(clienteSelecionado.codcli, 10),
-        codsupervisor: 300,//parseInt(supervisorLogado.id, 10),
-        codusur: parseInt(rcaSelecionado.codusur, 10),
-        limite_sol: parseFloat(form.limiteSolicitado),
-        motivo: form.motivo,
-        obs: form.observacao || "" 
-      };
+      arquivos.forEach((arq) => {
+        formData.append('arquivos', arq);
+      });
 
-      console.log("📦 Payload enviado para a API:", payload);
+      console.log("📦 Enviando FormData com", arquivos.length, "arquivo(s).");
 
       const url_api = `${URL_API}/limite/solicitar`;
 
       const resposta = await fetch(url_api, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(payload)
+        body: formData
       });
 
       if (!resposta.ok) {
         const erroData = await resposta.json();
-        throw new Error(erroData.detail || 'Falha ao processar a solicitação de limite no servidor.')
+        throw new Error(erroData.detail || 'Falha ao processar a solicitação de limite de crédito')
       }
 
-      setFeedback({ 
+      setFeedback({
         tipo: 'sucesso',
-        mensagem: 'Solicitação enviada e registrada com sucesso'
-      })
+        mensagem: 'Solicitação enviada e registrada com sucesso!'
+      });
 
       setForm(ESTADO_INICIAL);
+      setArquivos([]);
       setEtapa(ETAPAS.RCA);
       setRcaSelecionado(null);
       setClienteSelecionado(null);
@@ -296,6 +297,22 @@ export default function LimiteCredito({ onVoltar, usuarioLogado }) {
                       onChange={handleChange}
                       rows={4}
                     />
+                  </div>
+
+                  <div className='form-group'>
+                    <label htmlFor="arquivos">Anexos (PDF, Imagens, etc)</label>
+                    <input  
+                      id='arquivos'
+                      type="file"
+                      multiple
+                      className='input'
+                      onChange={(e) => setArquivos(Array.from(e.target.files))}
+                    />
+                    {arquivos.length > 0 && (
+                      <small style={{ color: '#666', marginTop: '4px', display: 'block'}}>
+                        {arquivos.length} arquivos(s) selecionado(s)
+                      </small>
+                    )}
                   </div>
 
                   <div className="form-actions">

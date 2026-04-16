@@ -12,7 +12,11 @@ export default function RcaSelector({ onSelecionar }) {
   useEffect(() => {
     const buscarRcasApi = async () => {
       try {
-        const token = `${TOKEN_SUPERVISOR}`;//localStorage.getItem('token_supervisor');
+        const token = localStorage.getItem('token_supervisor');//`${TOKEN_SUPERVISOR}`;
+
+        const supervisorStr = localStorage.getItem('usuario_logado');
+        const supervisorLogado = supervisorStr ? JSON.parse(supervisorStr) : null;
+        const codsupervisorEnvio = supervisorLogado ? (supervisorLogado.codsupervisor || supervisorLogado.id) : 7000;
 
         if (!token) {
           setErro('Usuário não autenticado. Por favor, faça Login novamente.');
@@ -20,7 +24,7 @@ export default function RcaSelector({ onSelecionar }) {
           return;
         }
 
-        const retorno =await fetch(`${URL_API}/rcas/listar/300`, {//fetch('http://127.0.0.1:8000/api/rcas/listar/300', {
+        const retorno =await fetch(`${URL_API}/rcas/listar/${codsupervisorEnvio}`, {//fetch('http://127.0.0.1:8000/api/rcas/listar/300', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
