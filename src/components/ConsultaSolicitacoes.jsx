@@ -42,8 +42,8 @@ function formatarMoeda(valor) {
   return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// ── Modal de Edição ──────────────────────────────────────────────
-function ModalEdicao({ solicitacao, endpointBase, onFechar, onSucesso }) {
+// ── Modal de Edição padrão (Limite de Crédito) ───────────────────
+export function ModalEdicaoLimite({ solicitacao, onFechar, onSucesso }) {
   const [form, setForm] = useState({
     limite_sol: solicitacao.limite_sol ?? '',
     motivo: solicitacao.motivo ?? '',
@@ -85,22 +85,14 @@ function ModalEdicao({ solicitacao, endpointBase, onFechar, onSucesso }) {
     <div className="modal-overlay" onClick={onFechar}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
         <div className="modal-header">
-          <span className="modal-title">✏️ Editar Solicitação</span>
+          <span className="modal-title">✏️ Editar Solicitação de Limite</span>
           <button className="modal-close" onClick={onFechar}>✕</button>
         </div>
         <form className="form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Valor Solicitado (R$)</label>
-            <input
-              name="limite_sol"
-              type="number"
-              min="0"
-              step="0.01"
-              className="input"
-              value={form.limite_sol}
-              onChange={handleChange}
-              required
-            />
+            <input name="limite_sol" type="number" min="0" step="0.01" className="input"
+              value={form.limite_sol} onChange={handleChange} required />
           </div>
           <div className="form-group">
             <label>Motivo</label>
@@ -115,13 +107,7 @@ function ModalEdicao({ solicitacao, endpointBase, onFechar, onSucesso }) {
           </div>
           <div className="form-group">
             <label>Observação</label>
-            <textarea
-              name="obs"
-              className="input textarea"
-              rows={3}
-              value={form.obs}
-              onChange={handleChange}
-            />
+            <textarea name="obs" className="input textarea" rows={3} value={form.obs} onChange={handleChange} />
           </div>
           {erro && <p className="error-msg">⚠ {erro}</p>}
           <div className="form-actions">
@@ -136,12 +122,12 @@ function ModalEdicao({ solicitacao, endpointBase, onFechar, onSucesso }) {
   );
 }
 
-// ── Modal de Confirmação de Cancelamento ─────────────────────────
-function ModalCancelamento({ solicitacao, endpointBase, onFechar, onSucesso }) {
+// ── Modal de Exclusão padrão (Limite de Crédito) ─────────────────
+export function ModalExclusaoLimite({ solicitacao, onFechar, onSucesso }) {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
 
-  const handleCancelar = async () => {
+  const handleExcluir = async () => {
     setLoading(true);
     setErro('');
     try {
@@ -153,7 +139,7 @@ function ModalCancelamento({ solicitacao, endpointBase, onFechar, onSucesso }) {
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        throw new Error(err.detail || 'Erro ao cancelar solicitação.');
+        throw new Error(err.detail || 'Erro ao excluir solicitação.');
       }
       onSucesso();
     } catch (err) {
@@ -180,12 +166,8 @@ function ModalCancelamento({ solicitacao, endpointBase, onFechar, onSucesso }) {
           {erro && <p className="error-msg">⚠ {erro}</p>}
           <div className="form-actions">
             <button className="btn btn-outline" onClick={onFechar}>Voltar</button>
-            <button
-              className="btn"
-              style={{ background: '#dc2626', color: '#fff', border: 'none' }}
-              onClick={handleCancelar}
-              disabled={loading}
-            >
+            <button className="btn" style={{ background: '#dc2626', color: '#fff', border: 'none' }}
+              onClick={handleExcluir} disabled={loading}>
               {loading ? 'Excluindo...' : 'Confirmar Exclusão'}
             </button>
           </div>
@@ -196,29 +178,42 @@ function ModalCancelamento({ solicitacao, endpointBase, onFechar, onSucesso }) {
 }
 
 // ── Componente Principal ─────────────────────────────────────────
-export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, onNovaSolicitacao }) {
+// Props:
+//   titulo, endpointBase, colunas, onNovaSolicitacao  — obrigatórias
+//   ModalEdicao    — componente customizado de edição   (padrão: ModalEdicaoLimite)
+//   ModalExclusao  — componente customizado de exclusão (padrão: ModalExclusaoLimite)
+export default function ConsultaSolicitacoes({
+  titulo,
+  endpointBase,
+  colunas,
+  onNovaSolicitacao,
+  ModalEdicao: ModalEdicaoCustom,
+  ModalExclusao: ModalExclusaoCustom,
+}) {
+  const ModalEdicaoFinal   = ModalEdicaoCustom   || ModalEdicaoLimite;
+  const ModalExclusaoFinal = ModalExclusaoCustom || ModalExclusaoLimite;
+
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
 
-  const [rcasDisponiveis, setRcasDisponiveis] = useState([
+  const rcasDisponiveis = [
     { codusur: '7045', nome: 'Matheus' },
     { codusur: '7046', nome: 'Marcos' },
-  ]);
+  ];
 
   const hoje = new Date();
   const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+  const ultimoDiaMes   = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
 
   const [filtroStatus, setFiltroStatus] = useState('');
-  const [filtroRca, setFiltroRca] = useState('');
+  const [filtroRca, setFiltroRca]       = useState('');
   const [filtroDataDe, setFiltroDataDe] = useState(primeiroDiaMes.toISOString().split('T')[0]);
   const [filtroDataAte, setFiltroDataAte] = useState(ultimoDiaMes.toISOString().split('T')[0]);
-  const [filtroBusca, setFiltroBusca] = useState('');
+  const [filtroBusca, setFiltroBusca]   = useState('');
 
-  // Modais
-  const [modalEdicao, setModalEdicao] = useState(null);       // solicitação sendo editada
-  const [modalCancelamento, setModalCancelamento] = useState(null); // solicitação sendo cancelada
+  const [modalEdicao, setModalEdicao]           = useState(null);
+  const [modalExclusao, setModalExclusao]       = useState(null);
 
   const buscarDadosAPI = useCallback(async () => {
     if (!filtroDataDe || !filtroDataAte) return;
@@ -265,32 +260,28 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
   const limparFiltros = () => { setFiltroStatus(''); setFiltroRca(''); setFiltroBusca(''); };
   const temFiltroAtivo = filtroStatus || filtroRca || filtroBusca;
 
-  // Após sucesso nos modais, fecha e recarrega
   const handleSucesso = () => {
     setModalEdicao(null);
-    setModalCancelamento(null);
+    setModalExclusao(null);
     buscarDadosAPI();
   };
 
-  // Só mostra editar/cancelar para solicitações pendentes
   const podeEditar = (s) => s.status === 'P';
 
   return (
     <div>
       {/* Modais */}
       {modalEdicao && (
-        <ModalEdicao
+        <ModalEdicaoFinal
           solicitacao={modalEdicao}
-          endpointBase={endpointBase}
           onFechar={() => setModalEdicao(null)}
           onSucesso={handleSucesso}
         />
       )}
-      {modalCancelamento && (
-        <ModalCancelamento
-          solicitacao={modalCancelamento}
-          endpointBase={endpointBase}
-          onFechar={() => setModalCancelamento(null)}
+      {modalExclusao && (
+        <ModalExclusaoFinal
+          solicitacao={modalExclusao}
+          onFechar={() => setModalExclusao(null)}
           onSucesso={handleSucesso}
         />
       )}
@@ -311,12 +302,13 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
             <input type="date" className="input" value={filtroDataDe} onChange={(e) => setFiltroDataDe(e.target.value)} />
             <span className="filtro-datas-sep">até</span>
             <input type="date" className="input" value={filtroDataAte} onChange={(e) => setFiltroDataAte(e.target.value)} />
-            <button className="btn btn-outline btn-sm" onClick={buscarDadosAPI}>Atualizar Banco</button>
+            <button className="btn btn-outline btn-sm" onClick={buscarDadosAPI}>Atualizar</button>
           </div>
 
           <div className="search-wrap">
             <span className="search-icon">🔍</span>
-            <input type="text" className="input input-search" placeholder="Buscar cliente..." value={filtroBusca} onChange={(e) => setFiltroBusca(e.target.value)} />
+            <input type="text" className="input input-search" placeholder="Buscar cliente..."
+              value={filtroBusca} onChange={(e) => setFiltroBusca(e.target.value)} />
           </div>
 
           <select className="input" value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
@@ -386,7 +378,7 @@ export default function ConsultaSolicitacoes({ titulo, endpointBase, colunas, on
                               ? { background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }
                               : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0', cursor: 'not-allowed', opacity: 0.5 }
                           }
-                          onClick={() => podeEditar(s) && setModalCancelamento(s)}
+                          onClick={() => podeEditar(s) && setModalExclusao(s)}
                         >
                           🗑️ Excluir
                         </button>

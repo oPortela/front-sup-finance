@@ -5,7 +5,6 @@ import ClienteSelector from '../components/ClienteSelector';
 import Feedback from '../components/Feedback';
 import Stepper from '../components/Stepper';
 import ConsultaSolicitacoes from '../components/ConsultaSolicitacoes';
-import { alterarPlanoPagamento } from '../services/api';
 const URL_API = import.meta.env.VITE_URL_API;
 
 const MODOS = { CONSULTA: 'consulta', NOVA: 'nova' };
@@ -22,12 +21,155 @@ const ESTADO_INICIAL = {
 
 const COLUNAS_PLANO = [
   { key: 'codcli',         label: 'Cód. Cliente' },
-  { key: 'nome_cliente',   label: 'Cliente' },
+  { key: 'cliente',   label: 'Cliente' },
   { key: 'codusur',        label: 'RCA' },
   { key: 'plano_atual',    label: 'Plano Atual' },
   { key: 'plano_sol',      label: 'Plano Solicitado' },
-  { key: 'justificativa',  label: 'Justificativa' },
+  { key: 'motivo',  label: 'Justificativa' },
 ];
+
+function ModalEdicaoPlano({ solicitacao, planosPagamento, onFechar, onSucesso }) {
+  const [form, setForm] = useState({
+    plano_sol: solicitacao.cod_plaano_sol || '',
+    motivo: solicitacao.motivo || '',
+    obs: solicitacao.obs || '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErro('');
+    
+    try {
+      const token = localStorage.getItem('token_supervisor');
+      const resp = await fetch(`${URL_API}/plano/solicitar/${solicitacao.id_solicitacao}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          plano_sol: parseInt(form.plano_sol, 10),
+          motivo: form.motivo,
+          obs: form.obs,
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao atualizar solicitação de plano.');
+      }
+
+      onSucesso();
+
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+        <div className="modal-header">
+          <span className="modal-title">✏️ Editar Solicitação de Plano</span>
+          <button className="modal-close" onClick={onFechar}>✕</button>
+        </div>
+        <form className="form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Plano Solicitado</label>
+            <select name="plano_sol" className="input" value={form.plano_sol} onChange={handleChange} required>
+              <option value="">Selecione...</option>
+              {planosPagamento.map((p) => (
+                <option key={p.codplpag} value={p.codplpag}>{p.codplpag} - {p.descricao}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Justificativa</label>
+            <select name="motivo" className="input" value={form.motivo} onChange={handleChange} required>
+              <option value="">Selecione...</option>
+              <option value="fidelizacao">Fidelização do cliente</option>
+              <option value="concorrencia">Concorrência de mercado</option>
+              <option value="dificuldade_financeira">Dificuldade financeira temporária</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Observações</label>
+            <textarea name="obs" className="input textarea" rows={3} value={form.obs} onChange={handleChange} />
+          </div>
+          {erro && <p className="error-msg">⚠ {erro}</p>}
+          <div className="form-actions">
+            <button type="button" className="btn btn-outline" onClick={onFechar}>Cancelar</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ModalExclusaoPlano({ solicitacao, onFechar, onSucesso }) {
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const handleExcluir = async () => {
+    setLoading(true);
+    setErro('');
+
+    try {
+      const token = localStorage.getItem('token_supervisor');
+      const resp = await fetch(`${URL_API}/plano/cancelar/${solicitacao.id_solicitacao}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao excluir solicitação.');
+      }
+
+      onSucesso();
+
+    } catch (err) { 
+      setErro(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+        <div className="modal-header">
+          <span className="modal-title">🗑️ Excluir Solicitação de Plano</span>
+          <button className="modal-close" onClick={onFechar}>✕</button>
+        </div>
+        <div style={{ padding: '20px 24px 24px' }}>
+          <p style={{ margin: '0 0 8px' }}>Tem certeza que deseja excluir esta solicitação do cliente <strong>{solicitacao.cliente}</strong>?</p>
+          {erro && <p className="error-msg">⚠ {erro}</p>}
+          <div className="form-actions">
+            <button className="btn btn-outline" onClick={onFechar}>Voltar</button>
+            <button className="btn" style={{ background: '#dc2626', color: '#fff', border: 'none' }} onClick={handleExcluir} disabled={loading}>
+              {loading ? 'Excluindo...' : 'Confirmar Exclusão'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PlanoPagamento({ onVoltar }) {
   const [modo, setModo] = useState(MODOS.CONSULTA);
@@ -199,9 +341,11 @@ export default function PlanoPagamento({ onVoltar }) {
       {modo === MODOS.CONSULTA && (
         <ConsultaSolicitacoes
           titulo="Plano de Pagamento"
-          endpoint="/plano/solicitacoes"
+          endpointBase="/plano/solicitacoes"
           colunas={COLUNAS_PLANO}
           onNovaSolicitacao={() => { setModo(MODOS.NOVA); setEtapa(ETAPAS.RCA); }}
+          ModalEdicao={(props) => <ModalEdicaoPlano {...props} planosPagamento={planosPagamento} />}
+          ModalExclusao={ModalExclusaoPlano}
         />
       )}
 
