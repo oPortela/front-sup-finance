@@ -197,10 +197,7 @@ export default function ConsultaSolicitacoes({
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
 
-  const rcasDisponiveis = [
-    { codusur: '7045', nome: 'Matheus' },
-    { codusur: '7046', nome: 'Marcos' },
-  ];
+  const [rcasDisponiveis, setRcasDisponiveis] = useState([]);
 
   const hoje = new Date();
   const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -256,6 +253,38 @@ export default function ConsultaSolicitacoes({
     }
     return true;
   });
+
+  useEffect(() => {
+    const buscarRcasDisponiveis = async () => {
+      try {
+        const token = localStorage.getItem('token_supervisor');
+        const supervisorStr = localStorage.getItem('usuario_logado');
+        const supObj = JSON.parse(supervisorStr);
+        const codSupervisor = supObj.codsupervisor || supObj.id;
+
+        const url = `${URL_API}/rcas/listar/${codSupervisor}`;
+
+        const resp = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+        });
+
+        if (!resp.ok) throw new Error('Falha ao listar RCAs.');
+
+        const json = await resp.json();
+
+        setRcasDisponiveis(json.data || []);
+
+      } catch (err) {
+        console.error("Erro ao carregar RCAs para o filtro:". err.message);
+      }
+    };
+
+    buscarRcasDisponiveis();
+  }, []);
 
   const limparFiltros = () => { setFiltroStatus(''); setFiltroRca(''); setFiltroBusca(''); };
   const temFiltroAtivo = filtroStatus || filtroRca || filtroBusca;
