@@ -182,6 +182,7 @@ export function ModalExclusaoLimite({ solicitacao, onFechar, onSucesso }) {
 //   titulo, endpointBase, colunas, onNovaSolicitacao  — obrigatórias
 //   ModalEdicao    — componente customizado de edição   (padrão: ModalEdicaoLimite)
 //   ModalExclusao  — componente customizado de exclusão (padrão: ModalExclusaoLimite)
+//   ModalMensagem  — componente de chat/mensagens (opcional, exibe botão 💬 se fornecido)
 export default function ConsultaSolicitacoes({
   titulo,
   endpointBase,
@@ -189,6 +190,7 @@ export default function ConsultaSolicitacoes({
   onNovaSolicitacao,
   ModalEdicao: ModalEdicaoCustom,
   ModalExclusao: ModalExclusaoCustom,
+  ModalMensagem,
 }) {
   const ModalEdicaoFinal   = ModalEdicaoCustom   || ModalEdicaoLimite;
   const ModalExclusaoFinal = ModalExclusaoCustom || ModalExclusaoLimite;
@@ -209,8 +211,9 @@ export default function ConsultaSolicitacoes({
   const [filtroDataAte, setFiltroDataAte] = useState(ultimoDiaMes.toISOString().split('T')[0]);
   const [filtroBusca, setFiltroBusca]   = useState('');
 
-  const [modalEdicao, setModalEdicao]           = useState(null);
-  const [modalExclusao, setModalExclusao]       = useState(null);
+  const [modalEdicao, setModalEdicao]     = useState(null);
+  const [modalExclusao, setModalExclusao] = useState(null);
+  const [modalMensagem, setModalMensagem] = useState(null);
 
   const buscarDadosAPI = useCallback(async () => {
     if (!filtroDataDe || !filtroDataAte) return;
@@ -295,6 +298,7 @@ export default function ConsultaSolicitacoes({
   const handleSucesso = () => {
     setModalEdicao(null);
     setModalExclusao(null);
+    setModalMensagem(null);
     buscarDadosAPI();
   };
 
@@ -314,6 +318,13 @@ export default function ConsultaSolicitacoes({
         <ModalExclusaoFinal
           solicitacao={modalExclusao}
           onFechar={() => setModalExclusao(null)}
+          onSucesso={handleSucesso}
+        />
+      )}
+      {modalMensagem && ModalMensagem && (
+        <ModalMensagem
+          solicitacao={modalMensagem}
+          onFechar={() => setModalMensagem(null)}
           onSucesso={handleSucesso}
         />
       )}
@@ -401,6 +412,16 @@ export default function ConsultaSolicitacoes({
                         >
                           ✏️ Editar
                         </button>
+                        {ModalMensagem && (
+                          <button
+                            className="btn btn-sm"
+                            title="Mensagens / Negociação"
+                            style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}
+                            onClick={() => setModalMensagem(s)}
+                          >
+                            💬 Mensagens
+                          </button>
+                        )}
                         <button
                           className="btn btn-sm"
                           title="Excluir solicitação"
