@@ -23,6 +23,178 @@ const COLUNAS_LIMITE = [
   { key: 'obs',          label: 'Observação'},
 ];
 
+function ModalNegociacaoLimite({ solicitacao, onFechar, onSucesso }) {
+  const [mensagens, setmensagens] = useState([]);
+  const [novaMensagem, setNovaMensagem] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const carregarMensagens = async () => {
+    try {
+      const token = localStorage.getItem('token_supervisor');
+      const resp = await fetch(`${URL_API}/limite/solicitacao/${solicitacao.id_solicitacao}/mensagens`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (resp.ok) {
+        const json = await resp.json();
+        setmensagens(json.data || []);
+      }
+
+    } catch (err) {
+      console.error("Erro ao carregar chat:", err);
+    }
+  };
+
+  useEffect(() => {
+    carregarMensagens();
+  }, []);
+
+  const handleEnviarMensagem = async (e) => {
+    e.preventDefault();
+    if (!novaMensagem.trim()) return;
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token_supervisor');
+      const supervisorStr = localStorage.getItem('usuario_logado');
+      const supervisor = supervisorStr ? JSON.parse(supervisorStr) : { nome: 'Supervisor' };
+
+      const resp = await fetch(`${URL_API}/limite/solicitacao/mensagens`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          id_solicitacao: solicitacao.id_solicitacao,
+          autor: supervisor.nome,
+          mensagem: novaMensagem,
+          tipo_mensagem: 'M'
+        })
+      });
+
+      if (!resp.ok) throw new Error("Erro ao enviar a mensagem");
+
+      setNovaMensagem('');
+      carregarMensagens();
+      onSucesso();
+
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className='modal-overlay' onClick={onFechar}>
+      <div 
+        className='modal-box' 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: 600,
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '90vh'
+        }}
+      >
+        {/*DIV do Cabeçalho */}
+        <div className='modal-header'>
+          <span className='modal-title'>💬 Negociação de Limite: {solicitacao.cliente}</span>
+          <button className='modal-close' onClick={onFechar}>X</button>
+        </div>
+
+        {/* DIV de Dados Originais */}
+        <div
+          style={{
+            padding: '15px 20px',
+            background: '#F8FAFC',
+            borderBottom: '1px solid #e2e8f0',
+            fontSize: '0.9rem'
+          }}
+        >
+          <p><strong>Limite Atual:</strong> {formatarMoeda(solicitacao.limite_atual)}</p>
+          <p><strong>Limite Solicitado:</strong> <span style={{ color: '#16a34a', fontWeight: 'bold' }}> {formatarMoeda(solicitacao.limite_sol)}</span></p>
+          <p><strong>Motivo Original:</strong> {solicitacao.motivo}</p>
+        </div>
+
+        {/*Area do CHAT (TIMELINE)*/}
+        <div
+          style={{
+            padding: '20px',
+            flex: 1,
+            overflowY: 'auto',
+            background: '#f1f5f9',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}
+        >
+          {mensagens.length === 0 ? (
+            <p
+              style={{
+                textAlign: 'center',
+                color: '#94a3b8',
+                fontSize: '0.9rem'
+              }}
+            >Nenhuma mensagem ainda. Inicie a conversa abaixo.</p>
+          ) : (
+            mensagens.map((msg) => (
+              <div
+                key={msg.id}
+                style={{
+                  background: '#fff',
+                  padding: '10px 15px',
+                  borderRadius: '80px',
+                  borderLeft: msg.tipo_mensagem === 'C' ? '4px solid #d97706' : '4px solid #3b82f6',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '5px' }}>
+                  <strong>{msg.autor}</strong>
+                  <span>{new Date(msg.data).toLocaleString('pt-BR')}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.95rem' }}>{msg.mensagem}</p>
+                {msg.valor_proposto && (
+                  <div style={{ marginTop: '8px', background: '#fef3c7', padding: '5px 10px', borderRadius: '4px', fontSize: '0.85rem', color: '#92400e' }}>
+                    <strong>Contraproposta:</strong> {formatarMoeda(msg.valor_proposto)}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* CAMPO de DIGITAÇÃO */}
+        <form 
+          onSubmit={handleEnviarMensagem} 
+          style={{ 
+            padding: '15px 20px',  
+            borderTop: '1px solid #e2e8f0',
+            display: 'flex',
+            gap: '10px'
+          }}
+        >
+          <input 
+            type="text" 
+            className='input'
+            placeholder='Digite sua mensagem'
+            value={novaMensagem}
+            onChange={(e) => setNovaMensagem(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button type='submit' className='btn btn-primary' disabled={loading || !novaMensagem.trim()}>
+            {loading ? '...' : 'Enviar'}
+          </button>
+        </form>
+
+      </div>
+    </div>
+  );
+}
+
 export default function LimiteCredito({ onVoltar, usuarioLogado }) {
   const [modo, setModo] = useState(MODOS.CONSULTA);
   const [etapa, setEtapa] = useState(ETAPAS.RCA);
@@ -179,6 +351,7 @@ export default function LimiteCredito({ onVoltar, usuarioLogado }) {
           endpointBase="/limite/solicitacoes"
           colunas={COLUNAS_LIMITE}
           onNovaSolicitacao={() => { setModo(MODOS.NOVA); setEtapa(ETAPAS.RCA); }}
+          ModalMensagem={ModalNegociacaoLimite}
         />
       )}
 
