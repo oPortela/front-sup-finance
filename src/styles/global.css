@@ -765,12 +765,150 @@ select.input { cursor: pointer; }
   margin-top: 8px;
 }
 
+/* ===== PAGINAÇÃO ===== */
+.paginacao {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.paginacao-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.paginacao-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.paginacao-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.paginacao-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.paginacao-info {
+  margin-left: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 /* ===== ADMIN FILTROS ===== */
 .admin-filtros-grid {
   display: grid;
   grid-template-columns: 1fr 160px 160px;
   gap: 12px;
   align-items: end;
+}
+
+/* ===== ADMIN LAYOUT COM SIDEBAR ===== */
+.admin-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.admin-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 12px;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 80px;
+}
+
+.admin-sidebar-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 0 8px;
+  margin: 0 0 8px;
+}
+
+.admin-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s;
+  font-family: inherit;
+}
+
+.admin-sidebar-item:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.admin-sidebar-item.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+  border-left: 3px solid var(--primary);
+  padding-left: 9px;
+}
+
+.admin-sidebar-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.admin-content {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  .admin-sidebar {
+    width: 100%;
+    position: static;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 12px;
+  }
+  .admin-sidebar-label { display: none; }
+  .admin-sidebar-item { width: auto; flex: 1; justify-content: center; }
+  .admin-sidebar-item.active { border-left: none; border-bottom: 3px solid var(--primary); padding-left: 12px; }
 }
 
 /* ===== BOTÕES ATIVAR/DESATIVAR ===== */

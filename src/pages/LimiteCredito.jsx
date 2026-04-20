@@ -17,10 +17,10 @@ const COLUNAS_LIMITE = [
   { key: 'codcli',       label: 'Cód. Cliente' },
   { key: 'cliente',      label: 'Cliente' },
   { key: 'codusur',      label: 'RCA' },
-  { key: 'limcred', label: 'Limite Atual',      render: (s) => formatarMoeda(s.limite_atual) },
+  { key: 'limcred',      label: 'Limite Atual',      render: (s) => formatarMoeda(s.limcred) },
   { key: 'limite_sol',   label: 'Limite Solicitado', render: (s) => formatarMoeda(s.limite_sol) },
   { key: 'motivo',       label: 'Motivo' },
-  { key: 'obs', label: 'Observação'},
+  { key: 'obs',          label: 'Observação'},
 ];
 
 export default function LimiteCredito({ onVoltar, usuarioLogado }) {
@@ -33,7 +33,7 @@ export default function LimiteCredito({ onVoltar, usuarioLogado }) {
   const [buscandoLimite, setBuscandoLimite] = useState(false); 
   const [idEditando, setIdEditando] = useState(null);
   const [feedback, setFeedback] = useState({ tipo: '', mensagem: '' });
-  const [arquivos, setArquivos] = useState(false);
+  const [arquivos, setArquivos] = useState([]);
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 

@@ -229,7 +229,10 @@ export default function ConsultaSolicitacoes({
       });
 
       const resp = await fetch(`${URL_API}${endpointBase}?${queryParams}`, {
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 
+          'Content-Type': 'application/json', 
+          Authorization: `Bearer ${token}` 
+        },
       });
 
       if (!resp.ok) throw new Error('Falha ao carregar solicitações.');

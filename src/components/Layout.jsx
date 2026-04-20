@@ -1,14 +1,13 @@
 import '../styles/global.css';
 
 export default function Layout({ titulo, subtitulo, onVoltar, children, usuarioLogado }) {
-  const nomeExibicao = usuarioLogado?.nome || 'Usuário';
+  const nomeExibicao = usuarioLogado?.nome || '';
 
-  const obterIniciaris = (nome) => {
-    if (!nome) return 'US';
-
-    const partes = nome.trim().split(' ');
+  const obterIniciais = (nome) => {
+    if (!nome) return '?';
+    const partes = nome.trim().split(' ').filter(Boolean);
     if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
-    return (partes[0][0] + partes[partes.length -1][0]).toUpperCase();
+    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
   };
 
   return (
@@ -19,8 +18,8 @@ export default function Layout({ titulo, subtitulo, onVoltar, children, usuarioL
           Portal do Supervisor
         </div>
         <div className="topnav-right">
-          <span className="topnav-user">{nomeExibicao}</span>
-          <div className="topnav-avatar">{obterIniciaris(nomeExibicao)}</div>
+          {nomeExibicao && <span className="topnav-user">{nomeExibicao}</span>}
+          <div className="topnav-avatar">{obterIniciais(nomeExibicao)}</div>
         </div>
       </nav>
 
