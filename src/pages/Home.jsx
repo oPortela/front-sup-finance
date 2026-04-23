@@ -26,7 +26,7 @@ const modulos = [
     icone: '🤝',
     titulo: 'Solicitação de Negociação',
     descricao: 'Abrir negociação em itens e descontos.',
-    emDesenvolvimento: true,
+    //emDesenvolvimento: true,
   },
   {
     id: 'sigweb',
