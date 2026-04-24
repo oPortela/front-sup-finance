@@ -145,7 +145,8 @@ function ModalDetalhesProduto({ produto, onConfirmar, onFechar }) {
 }
 
 // ─── Task 4 — ModalBuscaProdutos ─────────────────────────────────
-function ModalBuscaProdutos({ onSelecionar, onFechar }) {
+function ModalBuscaProdutos({ onSelecionar, onFechar, codfilial }) {
+  const [filial, setFilial] = useState('')
   const [busca, setBusca] = useState('');
   const [pagina, setPagina] = useState(1);
   const [produtos, setProdutos] = useState([]);
@@ -164,21 +165,32 @@ function ModalBuscaProdutos({ onSelecionar, onFechar }) {
   // Task 4.2 — debounce 400ms
   useEffect(() => {
     clearTimeout(debounceRef.current);
+
     debounceRef.current = setTimeout(() => {
-      buscarProdutos(busca, pagina);
+      if (codfilial) {
+        buscarProdutos(codfilial, busca, pagina);
+      }
     }, 400);
     return () => clearTimeout(debounceRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busca, pagina]);
+  }, [busca, pagina, codfilial]);
 
-  const buscarProdutos = async (termo, pag) => {
+  const buscarProdutos = async (codfilial, termo, pag) => {
     setCarregando(true);
     setErro('');
     try {
       const token = localStorage.getItem('token_supervisor');
-      const params = new URLSearchParams({ busca: termo, pagina: pag, por_pagina: 10 });
-      const resp = await fetch(`${URL_API}/negociacao/produtos?${params}`, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      const params = new URLSearchParams({ 
+        codfilial: codfilial, 
+        termo, 
+        page: pag, 
+        per_page: 10 
+      });
+      const resp = await fetch(`${URL_API}/negociacao/listar/produtos?${params}`, {
+        headers: { 
+          Authorization: `Bearer ${token}`, 
+          'Content-Type': 'application/json' 
+        },
       });
       if (!resp.ok) throw new Error('Falha ao buscar produtos.');
       const json = await resp.json();
@@ -245,7 +257,7 @@ function ModalBuscaProdutos({ onSelecionar, onFechar }) {
                     <th style={{ width: 60 }}>Foto</th>
                     <th>Cód.</th>
                     <th>Descrição</th>
-                    <th>Preço</th>
+                    <th>Estoque</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -254,16 +266,16 @@ function ModalBuscaProdutos({ onSelecionar, onFechar }) {
                     <tr key={p.codprod}>
                       <td>
                         <img
-                          src={p.diretorio}
-                          alt={p.descricao}
+                          src={p.IMAGEM}
+                          alt={p.DESCRICAO}
                           style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }}
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       </td>
-                      <td style={{ fontWeight: 600, color: '#64748b' }}>{p.codprod}</td>
-                      <td>{p.descricao}</td>
+                      <td style={{ fontWeight: 600, color: '#64748b' }}>{p.CODPROD}</td>
+                      <td>{p.DESCRICAO}</td>
                       <td style={{ whiteSpace: 'nowrap', color: '#2563eb', fontWeight: 600 }}>
-                        {formatarMoeda(p.preco)}
+                        {(p.ESTOQUE)}
                       </td>
                       <td>
                         <button
@@ -604,6 +616,7 @@ function FormularioNegociacao({
       {/* Task 4 — ModalBuscaProdutos */}
       {modalBusca && (
         <ModalBuscaProdutos
+          codfilial={cabecalho.codfilial}
           onSelecionar={handleAdicionarItem}
           onFechar={() => setModalBusca(false)}
         />
@@ -856,7 +869,22 @@ export default function SolicitacaoNegociacao({ onVoltar }) {
         });
         if (!resp.ok) throw new Error('Falha ao carregar filiais.');
         const json = await resp.json();
-        setFiliais(json.data || []);
+        const listaFiliais = json.data || [];
+        
+        // 1. Salvamos a lista completa para o <select>
+        setFiliais(listaFiliais);
+
+        // 2. Procuramos a Matriz (código '1') na lista que acabou de chegar
+        const matriz = listaFiliais.find((f) => String(f.CODFILIAL) === '1');
+
+        // 3. Se a Matriz existir na lista, já deixamos ela selecionada
+        if (matriz) {
+          setCabecalho((prev) => ({
+            ...prev,
+            codfilial: matriz.CODFILIAL,
+            razaosocial: matriz.RAZAOSOCIAL
+          }));
+        }
       } catch (err) {
         console.error(err);
       } finally {
