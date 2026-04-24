@@ -333,7 +333,7 @@ function ModalBuscaProdutos({ onSelecionar, onFechar }) {
 
 // ─── Task 3 — FormularioNegociacao ───────────────────────────────
 function FormularioNegociacao({
-  rca, cliente, cabecalho, itens, planos, carregandoPlanos,
+  rca, cliente, cabecalho, itens, planos, carregandoPlanos, filiais, carregandoFiliais,
   onCabecalhoChange, onAdicionarItem, onRemoverItem, onEnviar, onVoltar, loading,
 }) {
   // Task 3.6 — tab state
@@ -345,6 +345,13 @@ function FormularioNegociacao({
     const plano = planos.find((p) => String(p.codplpag) === String(cod));
     onCabecalhoChange('codplpag', cod);
     onCabecalhoChange('descPlano', plano ? plano.descricao : '');
+  };
+
+  const handleFilialChange = (e) => {
+    const codfilial = e.target.value;
+    const filial = filiais.find((p) => String(p.CODFILIAL) === String(codfilial));
+    onCabecalhoChange('codfilial', codfilial);
+    onCabecalhoChange('razaosocial', filial ? filial.RAZAOSOCIAL : '');
   };
 
   const handleAdicionarItem = (item) => {
@@ -400,6 +407,37 @@ function FormularioNegociacao({
       {/* Aba Dados Gerais — cabeçalho estilo formulário */}
       {aba === 'dados' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Linha 0 — FILIAL */}
+          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 8, alignItems: 'end' }}>
+            <div className="form-group">
+              <label>Filial</label>
+              <select
+                className="input"
+                value={cabecalho.codfilial}
+                onChange={handleFilialChange}
+                disabled={carregandoFiliais}
+                style={{ fontWeight: 700 }}
+              >
+                <option value="">
+                  {carregandoFiliais ? '...' : 'Cód.'}
+                </option>
+                {filiais.map((p) => (
+                  <option key={p.CODFILIAL} value={p.CODFILIAL}>{p.CODFILIAL} — {p.RAZAOSOCIAL}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Razão Social</label>
+              <input
+                className="input"
+                value={cabecalho.razaosocial}
+                readOnly
+                placeholder={carregandoFiliais ? 'Carregando filiais...' : 'Selecione uma filial ao lado'}
+                style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+              />
+            </div>
+          </div>
 
           {/* Linha 1 — Cliente */}
           <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 8, alignItems: 'end' }}>
@@ -498,7 +536,7 @@ function FormularioNegociacao({
           </div>
 
           {itens.length === 0 ? (
-            <p className="empty-msg">Nenhum item adicionado. Clique em "+ Adicionar Item".</p>
+            <p className="empty-msg" style={{ fontWeight: 'bold' }}>Nenhum item adicionado. Clique em "Adicionar Item".</p>
           ) : (
             <div className="consulta-table-wrap">
               <table className="consulta-table">
@@ -581,7 +619,9 @@ function ModalEdicaoNegociacao({ solicitacao, onFechar, onSucesso }) {
     obs: solicitacao.obs || '',
   });
   const [planos, setPlanos] = useState([]);
+  const [filiais, setFiliais] = useState([]);
   const [carregandoPlanos, setCarregandoPlanos] = useState(false);
+  const [carregandoFiliais, setCarregandoFiliais] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -604,6 +644,30 @@ function ModalEdicaoNegociacao({ solicitacao, onFechar, onSucesso }) {
       }
     };
     buscarPlanos();
+  }, []);
+
+  //LOAD Filiais 
+  useEffect(() => {
+    const buscarFiliais = async () => {
+      setCarregandoFiliais(true);
+      try {
+        const token = localStorage.getItem('token_supervisor');
+        const resp = await fetch(`${URL_API}/filial/listar`, {
+          headers: { 
+            Authorization: `Bearer ${token}`, 
+            'Content-Type': 'application/json' 
+          },
+        });
+        if (!resp.ok) throw new Error('Falha ao carregar filiais.');
+        const json = await resp.json();
+        setFiliais(json.data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setCarregandoFiliais(false);
+      }
+    };
+    buscarFiliais();
   }, []);
 
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -751,7 +815,9 @@ export default function SolicitacaoNegociacao({ onVoltar }) {
   const [cabecalho, setCabecalho] = useState({ codplpag: '', descPlano: '', obs: '' });
   const [itens, setItens] = useState([]);
   const [planos, setPlanos] = useState([]);
+  const [filiais, setFiliais] = useState([]);
   const [carregandoPlanos, setCarregandoPlanos] = useState(false);
+  const [carregandoFiliais, setCarregandoFiliais] = useState(false);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState({ tipo: '', mensagem: '' });
 
@@ -776,6 +842,29 @@ export default function SolicitacaoNegociacao({ onVoltar }) {
     };
     buscarPlanos();
   }, [etapa]);
+
+  useEffect(() => {
+    const buscarFiliais = async () => {
+      setCarregandoFiliais(true);
+      try {
+        const token = localStorage.getItem('token_supervisor');
+        const resp = await fetch(`${URL_API}/filial/listar`, {
+          headers: { 
+            Authorization: `Bearer ${token}`, 
+            'Content-Type': 'application/json' 
+          },
+        });
+        if (!resp.ok) throw new Error('Falha ao carregar filiais.');
+        const json = await resp.json();
+        setFiliais(json.data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setCarregandoFiliais(false);
+      }
+    };
+    buscarFiliais();
+  }, []);
 
   const resetarEstado = () => {
     setEtapa(ETAPAS.RCA);
@@ -899,6 +988,8 @@ export default function SolicitacaoNegociacao({ onVoltar }) {
               itens={itens}
               planos={planos}
               carregandoPlanos={carregandoPlanos}
+              filiais={filiais}
+              carregandoFiliais={carregandoFiliais}
               onCabecalhoChange={handleCabecalhoChange}
               onAdicionarItem={handleAdicionarItem}
               onRemoverItem={handleRemoverItem}
